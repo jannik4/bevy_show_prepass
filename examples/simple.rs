@@ -8,7 +8,15 @@ fn main() -> AppExit {
     let mut app = App::new();
 
     app.add_plugins((
-        DefaultPlugins,
+        DefaultPlugins.set(WindowPlugin {
+            primary_window: Window {
+                title: "Bevy Show Prepass".to_string(),
+                fit_canvas_to_parent: true,
+                ..default()
+            }
+            .into(),
+            ..default()
+        }),
         // Add the ShowPrepassPlugin
         ShowPrepassPlugin,
     ));

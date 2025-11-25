@@ -16,7 +16,7 @@ bevy = { version = "0.17.2", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-bevy = { version = "0.17.2", features = ["embedded_watcher"] }
+bevy = "0.17.2"
 
 [[example]]
 name = "simple"
