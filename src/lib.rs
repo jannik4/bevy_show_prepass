@@ -1,3 +1,8 @@
+#![deny(rust_2018_idioms)]
+#![allow(elided_lifetimes_in_paths)]
+#![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
+
 use bevy::{
     asset::embedded_asset,
     core_pipeline::{
@@ -30,6 +35,7 @@ use bevy::{
     },
 };
 
+/// A Bevy plugin to visualize depth, normal and motion vector prepasses.
 #[derive(Debug, Default)]
 pub struct ShowPrepassPlugin;
 
@@ -72,13 +78,20 @@ impl Plugin for ShowPrepassPlugin {
     }
 }
 
+/// Add this component to a camera to visualize a prepass.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Component, ExtractComponent)]
 pub enum ShowPrepass {
+    /// Visualize the depth prepass.
     Depth,
+    /// Visualize the normal prepass.
     Normals,
+    /// Visualize the motion vector prepass.
     MotionVectors,
 }
 
+/// Optional component to scale the depth visualization.
+///
+/// For example, a value of `0.75` will visualize depth as `depth = depth^0.75`.
 #[derive(Debug, Clone, Copy, PartialEq, Component, ExtractComponent)]
 pub struct ShowPrepassDepthPower(pub f32);
 
@@ -232,6 +245,7 @@ fn init_pipeline(
     });
 }
 
+/// Label for the show prepass render graph node.
 #[derive(Debug, Default, Hash, PartialEq, Eq, Clone, RenderLabel)]
 pub struct ShowPrepassLabel;
 

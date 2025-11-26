@@ -30,14 +30,6 @@ fn setup(mut commands: Commands) {
 }
 ```
 
-## Development
-
-Run example with shader hot reloading:
-
-```sh
-cargo run --example simple --features bevy/embedded_watcher
-```
-
 ## License
 
 Licensed under either of

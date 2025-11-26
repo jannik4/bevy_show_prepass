@@ -18,5 +18,6 @@ bevy = { version = "0.17.2", default-features = false, features = [
 [dev-dependencies]
 bevy = "0.17.2"
 
+# To run with shader hot reloading: cargo run --example simple --features bevy/embedded_watcher
 [[example]]
 name = "simple"
