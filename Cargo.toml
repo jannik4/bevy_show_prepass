@@ -1,7 +1,7 @@
 [package]
 name = "bevy_show_prepass"
 description = "A Bevy plugin to visualize depth, normal and motion vector prepasses."
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Jannik Obermann <jannik.obermann@gmail.com>"]
 repository = "https://github.com/jannik4/bevy_show_prepass"
