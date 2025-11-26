@@ -7,6 +7,8 @@
 
 A Bevy plugin to visualize depth, normal and motion vector prepasses.
 
+[Live Demo](https://jannik4.github.io/bevy_show_prepass/)
+
 ## Usage
 
 For a complete example, see the [simple example](https://github.com/jannik4/bevy_show_prepass/blob/main/examples/simple.rs).
