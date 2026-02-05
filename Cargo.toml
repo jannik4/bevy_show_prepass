@@ -8,7 +8,7 @@ repository = "https://github.com/jannik4/bevy_show_prepass"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-bevy = { version = "0.17.2", default-features = false, features = [
+bevy = { version = "0.18.0", default-features = false, features = [
     "bevy_render",
     "bevy_core_pipeline",
     "bevy_asset",
@@ -16,7 +16,7 @@ bevy = { version = "0.17.2", default-features = false, features = [
 ] }
 
 [dev-dependencies]
-bevy = "0.17.2"
+bevy = "0.18.0"
 
 # To run with shader hot reloading: cargo run --example simple --features bevy/embedded_watcher
 [[example]]
