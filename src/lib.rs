@@ -55,6 +55,7 @@ impl Plugin for ShowPrepassPlugin {
             .add_systems(
                 Core3d,
                 show_prepass_pass
+                    .in_set(ShowPrepassSystems)
                     .after(tonemapping)
                     .in_set(Core3dSystems::PostProcess),
             )
