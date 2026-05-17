@@ -157,7 +157,7 @@ impl ShowPrepassPipelineLayoutKey {
 struct ShowPrepassPipeline {
     shader: Handle<Shader>,
     fullscreen_shader: FullscreenShader,
-    layouts: HashMap<ShowPrepassPipelineLayoutKey, BindGroupLayout>,
+    layouts: HashMap<ShowPrepassPipelineLayoutKey, BindGroupLayoutDescriptor>,
 }
 
 impl SpecializedRenderPipeline for ShowPrepassPipeline {
@@ -206,7 +206,6 @@ impl SpecializedRenderPipeline for ShowPrepassPipeline {
 fn init_pipeline(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    render_device: Res<RenderDevice>,
     fullscreen_shader: Res<FullscreenShader>,
 ) {
     let layouts = ShowPrepassPipelineLayoutKey::keys()
@@ -227,8 +226,8 @@ fn init_pipeline(
                 },
             };
 
-            let layout = render_device.create_bind_group_layout(
-                None,
+            let layout = BindGroupLayoutDescriptor::new(
+                "show_prepass_bind_group_layout",
                 &[
                     uniform.build(0, ShaderStages::FRAGMENT),
                     texture.build(1, ShaderStages::FRAGMENT),
@@ -346,6 +345,7 @@ fn prepare_bind_groups(
     uniforms: Res<ComponentUniforms<ShowPrepassUniform>>,
     render_device: ResMut<RenderDevice>,
     pipeline: Res<ShowPrepassPipeline>,
+    pipeline_cache: Res<PipelineCache>,
 ) {
     for (view_entity, show_prepass, view_prepass_textures, msaa) in views {
         let key = ShowPrepassPipelineLayoutKey {
@@ -388,7 +388,7 @@ fn prepare_bind_groups(
 
         let bind_group = render_device.create_bind_group(
             "show_prepass_bind_group",
-            layout,
+            &pipeline_cache.get_bind_group_layout(layout),
             &[uniform_entry, texture_entry],
         );
 
