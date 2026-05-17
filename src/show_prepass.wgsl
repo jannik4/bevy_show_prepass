@@ -32,7 +32,7 @@ struct ShowPrepassUniform {
 }
 
 @fragment
-fn fragment(
+fn show_prepass_fragment(
     #ifdef MULTISAMPLED
     @builtin(sample_index) sample_index: u32,
     #endif

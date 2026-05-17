@@ -13,6 +13,7 @@ use bevy::{
     prelude::*,
     render::{
         camera::ExtractedCamera,
+        diagnostic::RecordDiagnostics,
         extract_component::{
             ComponentUniforms, DynamicUniformIndex, ExtractComponent, ExtractComponentPlugin,
             UniformComponentPlugin,
@@ -176,7 +177,7 @@ impl SpecializedRenderPipeline for ShowPrepassPipeline {
                     }
                     defs
                 },
-                entry_point: Some("fragment".into()),
+                entry_point: Some("show_prepass_fragment".into()),
                 targets: vec![Some(ColorTargetState {
                     format: key.texture_format,
                     blend: None,
@@ -258,6 +259,10 @@ fn show_prepass_pass(
         return;
     };
 
+    // Diagnostics
+    let diagnostics = ctx.diagnostic_recorder();
+    let diagnostics = diagnostics.as_deref();
+
     // Post process write
     let post_process = view_target.post_process_write();
 
@@ -275,6 +280,7 @@ fn show_prepass_pass(
         occlusion_query_set: None,
         multiview_mask: None,
     });
+    let pass_span = diagnostics.pass_span(&mut render_pass, "show_prepass_pass");
 
     // Viewport
     if let Some(viewport) = camera.viewport.as_ref() {
@@ -285,6 +291,9 @@ fn show_prepass_pass(
     render_pass.set_render_pipeline(pipeline);
     render_pass.set_bind_group(0, &bind_group.0, &[uniform_index.index()]);
     render_pass.draw(0..3, 0..1);
+
+    // End the diagnostics span
+    pass_span.end(&mut render_pass);
 }
 
 #[derive(Component)]
