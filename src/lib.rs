@@ -9,7 +9,6 @@ use bevy::{
         prepass::ViewPrepassTextures, tonemapping::tonemapping, Core3d, Core3dSystems,
         FullscreenShader,
     },
-    image::BevyDefault,
     platform::collections::HashMap,
     prelude::*,
     render::{
@@ -26,7 +25,7 @@ use bevy::{
             *,
         },
         renderer::{RenderContext, RenderDevice, ViewQuery},
-        view::ViewTarget,
+        view::{ExtractedView, ViewTarget},
         Render, RenderApp, RenderStartup, RenderSystems,
     },
 };
@@ -109,8 +108,8 @@ fn prepare_uniforms(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct ShowPrepassPipelineKey {
+    texture_format: TextureFormat,
     show_prepass: ShowPrepass,
-    hdr: bool,
     multisampled: bool,
 }
 
@@ -179,11 +178,7 @@ impl SpecializedRenderPipeline for ShowPrepassPipeline {
                 },
                 entry_point: Some("fragment".into()),
                 targets: vec![Some(ColorTargetState {
-                    format: if key.hdr {
-                        ViewTarget::TEXTURE_FORMAT_HDR
-                    } else {
-                        TextureFormat::bevy_default()
-                    },
+                    format: key.texture_format,
                     blend: None,
                     write_mask: ColorWrites::ALL,
                 })],
@@ -300,12 +295,12 @@ fn prepare_pipelines(
     pipeline_cache: Res<PipelineCache>,
     mut pipelines: ResMut<SpecializedRenderPipelines<ShowPrepassPipeline>>,
     pipeline: Res<ShowPrepassPipeline>,
-    views: Query<(Entity, &ExtractedCamera, &ShowPrepass, Option<&Msaa>)>,
+    views: Query<(Entity, &ExtractedView, &ShowPrepass, Option<&Msaa>)>,
 ) {
-    for (view_entity, camera, show_prepass, msaa) in &views {
+    for (view_entity, view, show_prepass, msaa) in &views {
         let key = ShowPrepassPipelineKey {
+            texture_format: view.target_format,
             show_prepass: *show_prepass,
-            hdr: camera.hdr,
             multisampled: msaa.is_some_and(|msaa| msaa.samples() > 1),
         };
         let pipeline = pipelines.specialize(&pipeline_cache, &pipeline, key);
