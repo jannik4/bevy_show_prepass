@@ -67,7 +67,7 @@ fn setup(
     ));
     commands.spawn((
         SpotLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         Transform::from_xyz(0.0, 8.0, 0.0).looking_at(Vec3::ZERO, Vec3::Y),

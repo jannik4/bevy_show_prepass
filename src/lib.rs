@@ -6,11 +6,10 @@
 use bevy::{
     asset::embedded_asset,
     core_pipeline::{
-        core_3d::graph::{Core3d, Node3d},
-        prepass::ViewPrepassTextures,
+        prepass::ViewPrepassTextures, tonemapping::tonemapping, Core3d, Core3dSystems,
         FullscreenShader,
     },
-    ecs::query::QueryItem,
+    image::BevyDefault,
     platform::collections::HashMap,
     prelude::*,
     render::{
@@ -19,9 +18,6 @@ use bevy::{
             ComponentUniforms, DynamicUniformIndex, ExtractComponent, ExtractComponentPlugin,
             UniformComponentPlugin,
         },
-        render_graph::{
-            NodeRunError, RenderGraphContext, RenderGraphExt, RenderLabel, ViewNode, ViewNodeRunner,
-        },
         render_resource::{
             binding_types::{
                 texture_2d, texture_2d_multisampled, texture_depth_2d,
@@ -29,8 +25,8 @@ use bevy::{
             },
             *,
         },
-        renderer::{RenderContext, RenderDevice},
-        view::{ExtractedView, ViewTarget},
+        renderer::{RenderContext, RenderDevice, ViewQuery},
+        view::ViewTarget,
         Render, RenderApp, RenderStartup, RenderSystems,
     },
 };
@@ -56,14 +52,11 @@ impl Plugin for ShowPrepassPlugin {
 
         render_app
             .init_resource::<SpecializedRenderPipelines<ShowPrepassPipeline>>()
-            .add_render_graph_node::<ViewNodeRunner<ShowPrepassNode>>(Core3d, ShowPrepassLabel)
-            .add_render_graph_edges(
+            .add_systems(
                 Core3d,
-                (
-                    Node3d::Tonemapping,
-                    ShowPrepassLabel,
-                    Node3d::EndMainPassPostProcessing,
-                ),
+                show_prepass_pass
+                    .after(tonemapping)
+                    .in_set(Core3dSystems::PostProcess),
             )
             .add_systems(
                 Render,
@@ -169,6 +162,7 @@ impl SpecializedRenderPipeline for ShowPrepassPipeline {
         RenderPipelineDescriptor {
             label: Some("show prepass pipeline".into()),
             layout: vec![layout.clone()],
+            immediate_size: 0,
             vertex: self.fullscreen_shader.to_vertex_state(),
             fragment: Some(FragmentState {
                 shader: self.shader.clone(),
@@ -197,7 +191,6 @@ impl SpecializedRenderPipeline for ShowPrepassPipeline {
             primitive: default(),
             depth_stencil: None,
             multisample: default(),
-            push_constant_ranges: vec![],
             zero_initialize_workgroup_memory: false,
         }
     }
@@ -244,67 +237,59 @@ fn init_pipeline(
     });
 }
 
-/// Label for the show prepass render graph node.
-#[derive(Debug, Default, Hash, PartialEq, Eq, Clone, RenderLabel)]
-pub struct ShowPrepassLabel;
+/// The systems of the show prepass render pass.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, SystemSet)]
+pub struct ShowPrepassSystems;
 
-#[derive(Debug, Default)]
-struct ShowPrepassNode;
+#[expect(clippy::type_complexity)]
+fn show_prepass_pass(
+    mut ctx: RenderContext,
+    view: ViewQuery<(
+        &ViewTarget,
+        &ShowPrepass,
+        &ExtractedCamera,
+        &CachedShowPrepassPipeline,
+        &ShowPrepassBindGroup,
+        &DynamicUniformIndex<ShowPrepassUniform>,
+    )>,
+    world: &World,
+) {
+    let (view_target, _show_prepass, camera, pipeline, bind_group, uniform_index) =
+        view.into_inner();
 
-impl ViewNode for ShowPrepassNode {
-    type ViewQuery = (
-        &'static ViewTarget,
-        &'static ShowPrepass,
-        &'static ExtractedCamera,
-        &'static CachedShowPrepassPipeline,
-        &'static ShowPrepassBindGroup,
-        &'static DynamicUniformIndex<ShowPrepassUniform>,
-    );
+    // Get the pipeline
+    let pipeline_cache = world.resource::<PipelineCache>();
+    let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline.0) else {
+        return;
+    };
 
-    fn run(
-        &self,
-        _graph: &mut RenderGraphContext,
-        render_context: &mut RenderContext,
-        (view_target, _show_prepass, camera, pipeline, bind_group, uniform_index): QueryItem<
-            Self::ViewQuery,
-        >,
-        world: &World,
-    ) -> Result<(), NodeRunError> {
-        // Get the pipeline
-        let pipeline_cache = world.resource::<PipelineCache>();
-        let Some(pipeline) = pipeline_cache.get_render_pipeline(pipeline.0) else {
-            return Ok(());
-        };
+    // Post process write
+    let post_process = view_target.post_process_write();
 
-        // Post process write
-        let post_process = view_target.post_process_write();
+    // Begin the render pass
+    let mut render_pass = ctx.begin_tracked_render_pass(RenderPassDescriptor {
+        label: Some("show prepass"),
+        color_attachments: &[Some(RenderPassColorAttachment {
+            view: post_process.destination,
+            depth_slice: None,
+            resolve_target: None,
+            ops: Operations::default(),
+        })],
+        depth_stencil_attachment: None,
+        timestamp_writes: None,
+        occlusion_query_set: None,
+        multiview_mask: None,
+    });
 
-        // Begin the render pass
-        let mut render_pass = render_context.begin_tracked_render_pass(RenderPassDescriptor {
-            label: Some("show prepass"),
-            color_attachments: &[Some(RenderPassColorAttachment {
-                view: post_process.destination,
-                depth_slice: None,
-                resolve_target: None,
-                ops: Operations::default(),
-            })],
-            depth_stencil_attachment: None,
-            timestamp_writes: None,
-            occlusion_query_set: None,
-        });
-
-        // Viewport
-        if let Some(viewport) = camera.viewport.as_ref() {
-            render_pass.set_camera_viewport(viewport);
-        }
-
-        // Draw
-        render_pass.set_render_pipeline(pipeline);
-        render_pass.set_bind_group(0, &bind_group.0, &[uniform_index.index()]);
-        render_pass.draw(0..3, 0..1);
-
-        Ok(())
+    // Viewport
+    if let Some(viewport) = camera.viewport.as_ref() {
+        render_pass.set_camera_viewport(viewport);
     }
+
+    // Draw
+    render_pass.set_render_pipeline(pipeline);
+    render_pass.set_bind_group(0, &bind_group.0, &[uniform_index.index()]);
+    render_pass.draw(0..3, 0..1);
 }
 
 #[derive(Component)]
@@ -315,12 +300,12 @@ fn prepare_pipelines(
     pipeline_cache: Res<PipelineCache>,
     mut pipelines: ResMut<SpecializedRenderPipelines<ShowPrepassPipeline>>,
     pipeline: Res<ShowPrepassPipeline>,
-    views: Query<(Entity, &ExtractedView, &ShowPrepass, Option<&Msaa>)>,
+    views: Query<(Entity, &ExtractedCamera, &ShowPrepass, Option<&Msaa>)>,
 ) {
-    for (view_entity, view, show_prepass, msaa) in &views {
+    for (view_entity, camera, show_prepass, msaa) in &views {
         let key = ShowPrepassPipelineKey {
             show_prepass: *show_prepass,
-            hdr: view.hdr,
+            hdr: camera.hdr,
             multisampled: msaa.is_some_and(|msaa| msaa.samples() > 1),
         };
         let pipeline = pipelines.specialize(&pipeline_cache, &pipeline, key);
